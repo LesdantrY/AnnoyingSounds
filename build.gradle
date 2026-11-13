@@ -1,0 +1,4 @@
+allprojects {
+    group = 'dev.annoyingsounds'
+    version = '1.4.1'
+}

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "annoying_sounds",
+  "version": "${version}",
+  "name": "Annoying Sounds",
+  "description": "Take control of every sound and inspect recent audio.",
+  "environment": "client",
+  "license": "MIT",
+  "entrypoints": { "client": ["dev.annoyingsounds.AnnoyingSounds"] },
+  "mixins": ["annoying_sounds.mixins.json"],
+  "depends": { "fabricloader": ">=${loader}", "minecraft": "${minecraft}", "java": ">=${java}", "fabric-api": "*" }
+}
+

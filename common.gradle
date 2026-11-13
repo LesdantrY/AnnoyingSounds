@@ -1,0 +1,74 @@
+base { archivesName = "annoying-sounds-${minecraftVersion}" }
+if (minecraftVersion == '26.3') {
+    // Minecraft 26.3 renamed its GUI extraction and key mapping APIs.
+    def adapted = tasks.register('adaptSharedSources', Sync) {
+        inputs.file rootProject.file('common.gradle')
+        inputs.property 'smokeTest', project.hasProperty('smokeTest')
+        from rootProject.file('src/main/java')
+        if (project.hasProperty('smokeTest')) from rootProject.file('src/smoke/java')
+        into layout.buildDirectory.dir('generated/sources/shared')
+        filter { String line ->
+            line.replace('client.keybinding.v1.KeyBindingHelper', 'client.keymapping.v1.KeyMappingHelper')
+                .replace('KeyBindingHelper.registerKeyBinding', 'KeyMappingHelper.registerKeyMapping')
+                .replace('Screens.getButtons(', 'Screens.getWidgets(')
+                .replace('client.setScreen(', 'client.gui.setScreen(')
+                .replace('client.screen)', 'client.gui.screen())')
+                .replace('client.screen;', 'client.gui.screen();')
+                .replace('mc.screen instanceof', 'mc.gui.screen() instanceof')
+                .replace('client.getOverlay()', 'client.gui.overlay()')
+                .replace('client.getMainRenderTarget()', 'client.gameRenderer.mainRenderTarget()')
+                .replace('minecraft.setScreen(', 'minecraft.gui.setScreen(')
+                .replace('getMainCamera()', 'mainCamera()')
+                .replace('GuiGraphics', 'GuiGraphicsExtractor')
+                .replace('void render(', 'void extractRenderState(')
+                .replace('void renderWidget(', 'void extractWidgetRenderState(')
+                .replace('void renderContents(', 'void extractContents(')
+                .replace('void renderBackground(', 'void extractBackground(')
+                .replace('super.render(', 'super.extractRenderState(')
+                .replace('.drawCenteredString(', '.centeredText(')
+                .replace('.drawString(', '.text(')
+                .replace('.renderItem(', '.item(')
+        }
+    }
+    sourceSets.main.java.srcDir(adapted)
+} else {
+    sourceSets.main.java.srcDir rootProject.file('src/main/java')
+    if (project.hasProperty('smokeTest')) sourceSets.main.java.srcDir rootProject.file('src/smoke/java')
+}
+sourceSets.main.resources.srcDir rootProject.file('src/main/resources')
+sourceSets {
+    verification {
+        java.srcDir rootProject.file('src/verification/java')
+        compileClasspath += sourceSets.main.output + configurations.runtimeClasspath
+        runtimeClasspath += sourceSets.main.output + configurations.runtimeClasspath
+    }
+}
+tasks.register('verifySoundHistory', JavaExec) {
+    dependsOn verificationClasses
+    classpath = sourceSets.verification.runtimeClasspath
+    mainClass = 'dev.annoyingsounds.SoundLogTest'
+}
+check.dependsOn verifySoundHistory
+java { sourceCompatibility = JavaVersion.toVersion(javaTarget); targetCompatibility = JavaVersion.toVersion(javaTarget); withSourcesJar() }
+tasks.withType(JavaCompile).configureEach { options.release = javaTarget; options.encoding = 'UTF-8' }
+processResources {
+    inputs.property 'version', project.version
+    inputs.property 'minecraft', minecraftVersion
+    inputs.property 'java', javaTarget
+    inputs.property 'loader', loaderVersion
+    inputs.property 'smokeTest', project.hasProperty('smokeTest')
+    filesMatching('fabric.mod.json') {
+        expand(version: project.version, minecraft: minecraftVersion, java: javaTarget, loader: loaderVersion)
+    }
+    doLast {
+        if (project.hasProperty('smokeTest')) {
+            def metadata = new File(destinationDir, 'fabric.mod.json')
+            def json = new groovy.json.JsonSlurper().parse(metadata)
+            json.entrypoints.client.add('dev.annoyingsounds.SmokeClient')
+            metadata.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(json))
+        }
+    }
+}
+if (project.hasProperty('smokeTest')) {
+    loom.runs.client { programArgs '--width', '1920', '--height', '1080' }
+}
