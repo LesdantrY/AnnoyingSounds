@@ -13,6 +13,7 @@ public final class SoundLog {
     public SoundLog() { this(System::nanoTime); }
     SoundLog(LongSupplier clock) { this.clock = clock; }
     public synchronized void add(String id, String category, boolean muted) {
+        if (id == null || id.isBlank()) return;
         long now = clock.getAsLong();
         events.addLast(new Event(id, category, now, muted));
         History old = known.remove(id);
@@ -25,11 +26,13 @@ public final class SoundLog {
         while (!events.isEmpty() && now - events.peekFirst().time() > 3600_000_000_000L) events.removeFirst();
     }
     public synchronized List<Event> recent(int seconds) {
+        if (seconds < 0) return List.of();
         long now = clock.getAsLong();
         trim(now);
         return events.stream().filter(e -> now - e.time() <= seconds * 1_000_000_000L).toList();
     }
     public synchronized List<History> history(int seconds) {
+        if (seconds < 0) return List.of();
         long now = clock.getAsLong();
         trim(now);
         List<History> result = new ArrayList<>();

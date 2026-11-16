@@ -7,12 +7,18 @@ public final class SoundLogTest {
     public static void main(String[] args) {
         var clock = new AtomicLong(0);
         var log = new SoundLog(clock::get);
+        log.add(null, "neutral", false);
+        log.add("   ", "neutral", false);
+        check(SoundNames.display(null).isEmpty(), "blank sound names are handled safely");
+        check(SoundNames.display(" ").isEmpty(), "whitespace-only IDs are handled safely");
         log.add("minecraft:entity.cat.ambient", "neutral", false);
         clock.set(2_000_000_000L);
         log.add("minecraft:block.note_block.bell", "record", true);
         check(log.recent(1).size() == 1, "short window must exclude old sounds");
         check(log.recent(3).size() == 2, "long window must include both sounds");
+        check(log.recent(-1).isEmpty(), "negative windows are treated as empty");
         check(log.history(1).getFirst().id().equals("minecraft:block.note_block.bell"), "newest sound is first");
+        check(log.history(-1).isEmpty(), "negative history windows are treated as empty");
         check(!log.history(1).getLast().recent(), "older sound moves into expired history");
         check(log.recent(1).getFirst().muted(), "muted attempts remain identifiable");
         clock.set(3603_000_000_000L);
